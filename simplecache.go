@@ -12,13 +12,13 @@ type Error string
 func (err Error) Error() string { return string(err) }
 
 type SimpleCache struct {
-	sync.Map
+	m sync.Map
 }
 
 const HashMapToken = "$%HASHMAP%$"
 
 func (s *SimpleCache) Set(key string, value interface{}) {
-	v, loaded := s.LoadOrStore(key, value)
+	v, loaded := s.m.LoadOrStore(key, value)
 
 	if loaded {
 		if t, ok := v.(string); ok {
@@ -26,14 +26,14 @@ func (s *SimpleCache) Set(key string, value interface{}) {
 				panic("simplecache: cannot call Set() on HASHMAP item")
 			}
 		} else {
-			s.Store(key, value)
+			s.m.Store(key, value)
 		}
 	}
 	return
 }
 
 func (s *SimpleCache) Get(key string) (interface{}, error) {
-	if value, ok := s.Load(key); ok {
+	if value, ok := s.m.Load(key); ok {
 		if t, ok := value.(string); ok {
 			if t == HashMapToken {
 				panic("simplecache: cannot call Get() on HASHMAP item")
@@ -46,7 +46,7 @@ func (s *SimpleCache) Get(key string) (interface{}, error) {
 }
 
 func (s *SimpleCache) HSet(key string, key2 string, value interface{}) {
-	v, loaded := s.LoadOrStore(key, HashMapToken)
+	v, loaded := s.m.LoadOrStore(key, HashMapToken)
 
 	if loaded {
 		if t, ok := v.(string); ok {
@@ -57,12 +57,12 @@ func (s *SimpleCache) HSet(key string, key2 string, value interface{}) {
 	}
 
 	k := fmt.Sprintf("%s/%s", key, key2)
-	s.Store(k, value)
+	s.m.Store(k, value)
 }
 
 func (s *SimpleCache) HGet(key, key2 string) (interface{}, error) {
 	k := fmt.Sprintf("%s/%s", key, key2)
-	if v, ok := s.Load(k); ok {
+	if v, ok := s.m.Load(k); ok {
 		return v, nil
 	}
 
@@ -74,7 +74,7 @@ func (s *SimpleCache) HMSet(key string, args ...interface{}) {
 		panic("HMSet param count wrong")
 	}
 
-	v, loaded := s.LoadOrStore(key, HashMapToken)
+	v, loaded := s.m.LoadOrStore(key, HashMapToken)
 
 	if loaded {
 		if t, ok := v.(string); ok {
@@ -86,7 +86,7 @@ func (s *SimpleCache) HMSet(key string, args ...interface{}) {
 
 	for i := 0; i < len(args); i += 2 {
 		k := fmt.Sprintf("%s/%s", key, args[i].(string))
-		s.Store(k, args[i+1])
+		s.m.Store(k, args[i+1])
 	}
 }
 
@@ -95,7 +95,7 @@ func (s *SimpleCache) HMGet(key string, args ...interface{}) (interface{}, error
 	hasValue := false
 	for i := 0; i < len(args); i++ {
 		k := fmt.Sprintf("%s/%s", key, args[i].(string))
-		if v, ok := s.Load(k); ok {
+		if v, ok := s.m.Load(k); ok {
 			values = append(values, v)
 			hasValue = true
 		} else {
@@ -109,7 +109,7 @@ func (s *SimpleCache) HMGet(key string, args ...interface{}) (interface{}, error
 }
 
 func (s *SimpleCache) Del(key string) error {
-	v, ok := s.Load(key)
+	v, ok := s.m.Load(key)
 
 	if !ok {
 		return ErrNil
@@ -118,7 +118,7 @@ func (s *SimpleCache) Del(key string) error {
 	if _v, ok := v.(string); ok {
 		if _v == HashMapToken {
 			delList := make([]string, 0, 10)
-			s.Range(func(k, v interface{}) bool {
+			s.m.Range(func(k, v interface{}) bool {
 				keys := strings.SplitN(k.(string), "/", 2)
 				if keys[0] == key {
 					delList = append(delList, k.(string))
@@ -127,13 +127,13 @@ func (s *SimpleCache) Del(key string) error {
 			})
 
 			for _, k := range delList {
-				s.Delete(k)
+				s.m.Delete(k)
 			}
 
 			return nil
 		}
 	}
 
-	s.Delete(key)
+	s.m.Delete(key)
 	return nil
 }
