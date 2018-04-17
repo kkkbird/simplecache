@@ -37,22 +37,8 @@ func Int(reply interface{}, err error) (int, error) {
 	if err != nil {
 		return 0, err
 	}
-	switch reply := reply.(type) {
-	case int64:
-		x := int(reply)
-		if int64(x) != reply {
-			return 0, strconv.ErrRange
-		}
-		return x, nil
-	case []byte:
-		n, err := strconv.ParseInt(string(reply), 10, 0)
-		return int(n), err
-	case nil:
-		return 0, ErrNil
-	case Error:
-		return 0, reply
-	}
-	return 0, fmt.Errorf("simplecache: unexpected type for Int, got type %T", reply)
+
+	return reply.(int), nil
 }
 
 // Int64 is a helper that converts a command reply to 64 bit integer. If err is
@@ -68,18 +54,7 @@ func Int64(reply interface{}, err error) (int64, error) {
 	if err != nil {
 		return 0, err
 	}
-	switch reply := reply.(type) {
-	case int64:
-		return reply, nil
-	case []byte:
-		n, err := strconv.ParseInt(string(reply), 10, 64)
-		return n, err
-	case nil:
-		return 0, ErrNil
-	case Error:
-		return 0, reply
-	}
-	return 0, fmt.Errorf("simplecache: unexpected type for Int64, got type %T", reply)
+	return reply.(int64), nil
 }
 
 var errNegativeInt = errors.New("simplecache: unexpected value for Uint64")
@@ -97,21 +72,7 @@ func Uint64(reply interface{}, err error) (uint64, error) {
 	if err != nil {
 		return 0, err
 	}
-	switch reply := reply.(type) {
-	case int64:
-		if reply < 0 {
-			return 0, errNegativeInt
-		}
-		return uint64(reply), nil
-	case []byte:
-		n, err := strconv.ParseUint(string(reply), 10, 64)
-		return n, err
-	case nil:
-		return 0, ErrNil
-	case Error:
-		return 0, reply
-	}
-	return 0, fmt.Errorf("simplecache: unexpected type for Uint64, got type %T", reply)
+	return reply.(uint64), nil
 }
 
 // Float64 is a helper that converts a command reply to 64 bit float. If err is
@@ -126,16 +87,7 @@ func Float64(reply interface{}, err error) (float64, error) {
 	if err != nil {
 		return 0, err
 	}
-	switch reply := reply.(type) {
-	case []byte:
-		n, err := strconv.ParseFloat(string(reply), 64)
-		return n, err
-	case nil:
-		return 0, ErrNil
-	case Error:
-		return 0, reply
-	}
-	return 0, fmt.Errorf("simplecache: unexpected type for Float64, got type %T", reply)
+	return reply.(float64), nil
 }
 
 // String is a helper that converts a command reply to a string. If err is not
@@ -151,17 +103,7 @@ func String(reply interface{}, err error) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	switch reply := reply.(type) {
-	case []byte:
-		return string(reply), nil
-	case string:
-		return reply, nil
-	case nil:
-		return "", ErrNil
-	case Error:
-		return "", reply
-	}
-	return "", fmt.Errorf("simplecache: unexpected type for String, got type %T", reply)
+	return reply.(string), nil
 }
 
 // Bytes is a helper that converts a command reply to a slice of bytes. If err
@@ -177,17 +119,7 @@ func Bytes(reply interface{}, err error) ([]byte, error) {
 	if err != nil {
 		return nil, err
 	}
-	switch reply := reply.(type) {
-	case []byte:
-		return reply, nil
-	case string:
-		return []byte(reply), nil
-	case nil:
-		return nil, ErrNil
-	case Error:
-		return nil, reply
-	}
-	return nil, fmt.Errorf("simplecache: unexpected type for Bytes, got type %T", reply)
+	return reply.([]byte), nil
 }
 
 // Bool is a helper that converts a command reply to a boolean. If err is not
@@ -203,17 +135,7 @@ func Bool(reply interface{}, err error) (bool, error) {
 	if err != nil {
 		return false, err
 	}
-	switch reply := reply.(type) {
-	case int64:
-		return reply != 0, nil
-	case []byte:
-		return strconv.ParseBool(string(reply))
-	case nil:
-		return false, ErrNil
-	case Error:
-		return false, reply
-	}
-	return false, fmt.Errorf("simplecache: unexpected type for Bool, got type %T", reply)
+	return reply.(bool), nil
 }
 
 // MultiBulk is a helper that converts an array command reply to a []interface{}.
@@ -233,15 +155,7 @@ func Values(reply interface{}, err error) ([]interface{}, error) {
 	if err != nil {
 		return nil, err
 	}
-	switch reply := reply.(type) {
-	case []interface{}:
-		return reply, nil
-	case nil:
-		return nil, ErrNil
-	case Error:
-		return nil, reply
-	}
-	return nil, fmt.Errorf("simplecache: unexpected type for Values, got type %T", reply)
+	return reply.([]interface{}), nil
 }
 
 func sliceHelper(reply interface{}, err error, name string, makeSlice func(int), assign func(int, interface{}) error) error {
