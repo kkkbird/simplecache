@@ -19,6 +19,7 @@ import (
 	"errors"
 	"fmt"
 	"reflect"
+	"strings"
 )
 
 func convertAssign(d interface{}, s interface{}) (err error) {
@@ -30,11 +31,30 @@ func convertAssign(d interface{}, s interface{}) (err error) {
 	return nil
 }
 
-func Scan(src []interface{}, dest ...interface{}) ([]interface{}, error) {
+func Scan(src []interface{}, dest ...interface{}) (rlt []interface{}, err error) {
 	if len(src) < len(dest) {
 		return nil, errors.New("simplecacheScan: array short")
 	}
-	var err error
+
+	defer func() {
+		if p := recover(); p != nil {
+			var sb strings.Builder
+			sb.WriteString("simplecacheScan Panic:")
+			switch p := p.(type) {
+			case error:
+				sb.WriteString(p.Error())
+			case string:
+				sb.WriteString(p)
+			default:
+				sb.WriteString("Unknown")
+			}
+			sb.WriteString(":")
+			sb.WriteString(fmt.Sprint(src...))
+
+			err = errors.New(sb.String())
+		}
+	}()
+
 	for i, d := range dest {
 		err = convertAssign(d, src[i])
 		if err != nil {
