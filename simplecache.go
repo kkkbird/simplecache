@@ -14,6 +14,11 @@ type SimpleCache struct {
 	m sync.Map
 }
 
+type hashMapEntry struct {
+	m  map[string]interface{}
+	mu sync.RWMutex
+}
+
 func (s *SimpleCache) Set(key string, value interface{}) {
 	if _, ok := s.m.Load(HashMapToken + key); ok {
 		panic("simplecache: cannot call Set() on HASHMAP item")
@@ -57,26 +62,32 @@ func (s *SimpleCache) HMSet(key string, args ...interface{}) {
 
 	key = HashMapToken + key
 
-	//create new map
-	hm := make(map[string]interface{})
+	//create new map, we may use sync.Map instead if it support store mulit keys in one time
+	// or embed like key/key1
+	hm := &hashMapEntry{
+		m: make(map[string]interface{}),
+	}
 
 	for i := 0; i < len(args); i += 2 {
-		hm[args[i].(string)] = args[i+1]
+		hm.m[args[i].(string)] = args[i+1]
 	}
 
 	_existHMap, loaded := s.m.LoadOrStore(key, hm)
 
 	//if key already exists
 	if loaded {
-		existHMap, ok := _existHMap.(map[string]interface{})
 		// value must be a hashmap type
+		existHMap, ok := _existHMap.(*hashMapEntry)
+
 		if !ok {
 			panic("simplecache: cannot call HMSet() on NOT-HASHMAP item")
 		}
-		for k, v := range hm {
-			existHMap[k] = v
+
+		existHMap.mu.Lock()
+		for k, v := range hm.m {
+			existHMap.m[k] = v
 		}
-		s.m.Store(key, existHMap)
+		existHMap.mu.Unlock()
 	}
 }
 
@@ -86,20 +97,23 @@ func (s *SimpleCache) HMGet(key string, args ...interface{}) (interface{}, error
 	}
 	key = HashMapToken + key
 	if _hm, ok := s.m.Load(key); ok {
-		hm, ok := _hm.(map[string]interface{})
+		//hm, ok := _hm.(*sync.Map)
+		hm, ok := _hm.(*hashMapEntry)
 		if !ok {
 			panic("simplecache: cannot call HMGet() on NOT-HASHMAP item")
 		}
 		values := make([]interface{}, 0, len(args))
 		hasValue := false
+		hm.mu.RLock()
 		for i := 0; i < len(args); i++ {
-			if v, ok := hm[args[i].(string)]; ok {
+			if v, ok := hm.m[args[i].(string)]; ok {
 				values = append(values, v)
 				hasValue = true
 			} else {
 				values = append(values, nil)
 			}
 		}
+		hm.mu.RUnlock()
 		if !hasValue {
 			return nil, ErrNil
 		}
